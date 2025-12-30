@@ -4,7 +4,7 @@
 
 VivaMentor transforms static study materials into a dynamic, interactive learning ecosystem. Powered by Google's Gemini 1.5 Pro and Flash models, it helps students master any subject through Socratic dialogue, real-time voice-based oral exams, automated essay grading, and adaptive study planning.
 
-![VivaMentor Dashboard]<img width="1861" height="916" alt="image" src="https://github.com/user-attachments/assets/b831d56c-241e-4309-b5d7-e6809d9082d6" />
+<img width="1861" height="916" alt="image" src="https://github.com/user-attachments/assets/b831d56c-241e-4309-b5d7-e6809d9082d6" />
 
 
 ## 🚀 Features
