@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { UploadCloud, FileText, AlertCircle, Sparkles, BrainCircuit, Mic, FileType, CheckCircle2, ArrowRight, Zap, GraduationCap, BarChart3, Layers, Github, Twitter } from 'lucide-react';
+import { UploadCloud, FileText, AlertCircle, Sparkles, BrainCircuit, Mic, FileType, CheckCircle2, ArrowRight, Zap, GraduationCap, BarChart3, Layers, Github, Twitter, Share2, Music, Calendar, Clock } from 'lucide-react';
 import { UploadedFile } from '../types';
 
 interface FileUploadProps {
@@ -88,7 +88,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
             <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
                 <a href="#features" className="hover:text-teal-600 transition-colors">Features</a>
                 <a href="#how-it-works" className="hover:text-teal-600 transition-colors">How it Works</a>
-                <a href="https://github.com" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-full hover:bg-slate-800 transition-all shadow-md hover:shadow-lg">
+                <a href="https://github.com/pushkar-web/VivaMentor--An-advanced-Study-buddy-powered-By-Artificial-Intelligence" target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-full hover:bg-slate-800 transition-all shadow-md hover:shadow-lg">
                     <Github className="w-4 h-4" /> Star on GitHub
                 </a>
             </div>
@@ -268,7 +268,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
                     </div>
                     <div className="flex gap-6">
                         <a href="#" className="hover:text-white transition-colors"><Twitter className="w-5 h-5"/></a>
-                        <a href="#" className="hover:text-white transition-colors"><Github className="w-5 h-5"/></a>
+                        <a href="https://github.com/pushkar-web/VivaMentor--An-advanced-Study-buddy-powered-By-Artificial-Intelligence" target="_blank" rel="noreferrer" className="hover:text-white transition-colors"><Github className="w-5 h-5"/></a>
                     </div>
                 </div>
                 <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between text-sm text-slate-500">
@@ -280,16 +280,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
                 </div>
             </div>
         </footer>
-
-        {/* Hidden Imports for Icons used in the list but not directly in JSX above to avoid linter errors if any */}
-        <div className="hidden">
-            <Share2 /> <Music /> <Calendar /> <Clock />
-        </div>
     </div>
   );
 };
 
 export default FileUpload;
-
-// Additional icons needed for the enhanced UI
-import { Share2, Music, Calendar, Clock } from 'lucide-react';

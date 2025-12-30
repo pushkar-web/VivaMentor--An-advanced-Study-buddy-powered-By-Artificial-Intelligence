@@ -2,12 +2,11 @@
 
 **Your AI-Powered Active Recall Study Assistant**
 
-VivaMentor transforms static study materials into a dynamic, interactive learning ecosystem. Powered by Google's Gemini 1.5 Pro and Flash models, it helps students master any subject through Socratic dialogue, real-time voice-based oral exams, automated essay grading, and adaptive study planning.
-
-<img width="1861" height="916" alt="image" src="https://github.com/user-attachments/assets/b831d56c-241e-4309-b5d7-e6809d9082d6" />
-
 [**🚀 Try the Live Demo**](https://vivamentor-613589505506.us-west1.run.app)
 
+VivaMentor transforms static study materials into a dynamic, interactive learning ecosystem. Powered by Google's Gemini 1.5 Pro and Flash models, it helps students master any subject through Socratic dialogue, real-time voice-based oral exams, automated essay grading, and adaptive study planning.
+
+![VivaMentor Dashboard](https://via.placeholder.com/1200x600?text=VivaMentor+Dashboard+Preview)
 
 ## 🚀 Features
 
@@ -58,8 +57,8 @@ Turn your notes into a podcast.
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/yourusername/vivamentor.git
-    cd vivamentor
+    git clone https://github.com/pushkar-web/VivaMentor--An-advanced-Study-buddy-powered-By-Artificial-Intelligence.git
+    cd VivaMentor--An-advanced-Study-buddy-powered-By-Artificial-Intelligence
     ```
 
 2.  **Install dependencies**
