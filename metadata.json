@@ -1,0 +1,7 @@
+{
+  "name": "VivaMentor",
+  "description": "A unified study assistant that refines notes, generates adaptive study materials, flashcards, and conducts real-time AI Viva exams using Gemini Live.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
