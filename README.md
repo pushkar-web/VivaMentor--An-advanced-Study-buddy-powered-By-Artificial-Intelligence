@@ -6,6 +6,8 @@ VivaMentor transforms static study materials into a dynamic, interactive learnin
 
 <img width="1861" height="916" alt="image" src="https://github.com/user-attachments/assets/b831d56c-241e-4309-b5d7-e6809d9082d6" />
 
+[**🚀 Try the Live Demo**](https://vivamentor-613589505506.us-west1.run.app)
+
 
 ## 🚀 Features
 
