@@ -1,3 +1,4 @@
+
 # VivaMentor
 
 **Your AI-Powered Active Recall Study Assistant**
@@ -52,8 +53,9 @@ Turn your notes into a podcast.
 - **Voice/Audio:** Google Gemini Multimodal Live API, Web Audio API
 - **Visualization:** D3.js, Mermaid.js
 - **Icons:** Lucide React
+- **Backend:** Node.js, Express (For Payment Processing)
 
-## 📦 Installation
+## 📦 Installation & Setup
 
 1.  **Clone the repository**
     ```bash
@@ -61,18 +63,28 @@ Turn your notes into a podcast.
     cd VivaMentor--An-advanced-Study-buddy-powered-By-Artificial-Intelligence
     ```
 
-2.  **Install dependencies**
+2.  **Install Dependencies**
+    Install both frontend and backend dependencies:
     ```bash
     npm install
+    npm install express cors dotenv
     ```
 
 3.  **Set up Environment Variables**
-    Create a `.env` file in the root directory and add your Google Gemini API Key:
+    Create a `.env` file in the root directory and add your keys:
     ```env
     API_KEY=your_google_gemini_api_key
     ```
+    *   **Gemini API:** [Get Key Here](https://aistudio.google.com/app/apikey)
 
-4.  **Run the application**
+4.  **Run the Payment Server**
+    In your first terminal window, start the backend server:
+    ```bash
+    node server.js
+    ```
+
+5.  **Run the Application**
+    In a **second** terminal window, start the React application:
     ```bash
     npm start
     ```

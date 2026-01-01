@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Command, ArrowRight, LayoutDashboard, Calendar, Share2, FileText, BrainCircuit, HelpCircle, MessageSquareText, Headphones, Mic, X, PenTool, Swords } from 'lucide-react';
-import { AppView } from '../types';
+import { Search, Command, ArrowRight, LayoutDashboard, Calendar, Share2, FileText, BrainCircuit, HelpCircle, MessageSquareText, Headphones, Mic, X, PenTool, Swords, CreditCard, Lock } from 'lucide-react';
+import { AppView, UserPlan } from '../types';
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigate: (view: AppView) => void;
-  currentFile: boolean; // whether a file is loaded
+  currentFile: boolean;
+  userPlan: UserPlan;
 }
 
 interface Action {
@@ -17,9 +19,10 @@ interface Action {
     view?: AppView;
     action?: () => void;
     requiresFile?: boolean;
+    minPlan?: UserPlan;
 }
 
-const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavigate, currentFile }) => {
+const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavigate, currentFile, userPlan }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -27,17 +30,31 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
   const actions: Action[] = [
     { id: 'dashboard', label: 'Go to Dashboard', icon: LayoutDashboard, view: AppView.DASHBOARD, requiresFile: true },
     { id: 'planner', label: 'Open Study Planner', icon: Calendar, view: AppView.PLANNER, requiresFile: true },
-    { id: 'graph', label: 'View Knowledge Graph', icon: Share2, view: AppView.KNOWLEDGE_GRAPH, requiresFile: true },
     { id: 'guide', label: 'Generate Study Guide', icon: FileText, view: AppView.STUDY_MATERIAL, requiresFile: true },
-    { id: 'essay', label: 'Essay Grader', icon: PenTool, view: AppView.ESSAY_GRADER, requiresFile: true },
-    { id: 'debate', label: 'Enter Debate Arena', icon: Swords, view: AppView.DEBATE_ARENA, requiresFile: true },
     { id: 'flashcards', label: 'Practice Flashcards', icon: BrainCircuit, view: AppView.FLASHCARDS, requiresFile: true },
     { id: 'quiz', label: 'Start Quiz Mode', icon: HelpCircle, view: AppView.QUIZ, requiresFile: true },
     { id: 'chat', label: 'Chat with Document', icon: MessageSquareText, view: AppView.CHAT, requiresFile: true },
-    { id: 'podcast', label: 'Create Audio Notebook', icon: Headphones, view: AppView.PODCAST, requiresFile: true },
-    { id: 'viva', label: 'Start Viva Examiner', icon: Mic, view: AppView.VIVA_EXAM, requiresFile: true },
+    
+    // Scholar Features
+    { id: 'essay', label: 'Essay Grader', icon: PenTool, view: AppView.ESSAY_GRADER, requiresFile: true, minPlan: UserPlan.SCHOLAR },
+    { id: 'debate', label: 'Enter Debate Arena', icon: Swords, view: AppView.DEBATE_ARENA, requiresFile: true, minPlan: UserPlan.SCHOLAR },
+    { id: 'graph', label: 'View Knowledge Graph', icon: Share2, view: AppView.KNOWLEDGE_GRAPH, requiresFile: true, minPlan: UserPlan.SCHOLAR },
+    { id: 'viva', label: 'Start Viva Examiner', icon: Mic, view: AppView.VIVA_EXAM, requiresFile: true, minPlan: UserPlan.SCHOLAR },
+    
+    // Genius Features
+    { id: 'podcast', label: 'Create Audio Notebook', icon: Headphones, view: AppView.PODCAST, requiresFile: true, minPlan: UserPlan.GENIUS },
+    
+    { id: 'pricing', label: 'Upgrade Plan / Pricing', icon: CreditCard, view: AppView.PRICING, requiresFile: false },
     { id: 'upload', label: 'Upload New File', icon: FileText, view: AppView.UPLOAD, requiresFile: false },
   ];
+
+  const isLocked = (minPlan?: UserPlan) => {
+      if (!minPlan) return false;
+      if (userPlan === UserPlan.GENIUS) return false;
+      if (userPlan === UserPlan.SCHOLAR && minPlan === UserPlan.GENIUS) return true;
+      if (userPlan === UserPlan.FREE && (minPlan === UserPlan.SCHOLAR || minPlan === UserPlan.GENIUS)) return true;
+      return false;
+  };
 
   const filteredActions = actions.filter(action => {
       if (action.requiresFile && !currentFile) return false;
@@ -52,7 +69,6 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
     }
   }, [isOpen]);
 
-  // Handle keyboard navigation inside the palette
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (!isOpen) return;
@@ -114,7 +130,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
                         No results found for "{query}"
                     </div>
                 ) : (
-                    filteredActions.map((action, index) => (
+                    filteredActions.map((action, index) => {
+                        const locked = isLocked(action.minPlan);
+                        return (
                         <button
                             key={action.id}
                             onClick={() => executeAction(action)}
@@ -126,9 +144,12 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
                                 <action.icon className={`w-5 h-5 ${index === selectedIndex ? 'text-teal-600' : 'text-slate-400'}`} />
                                 <span className={`font-medium ${index === selectedIndex ? 'font-semibold' : ''}`}>{action.label}</span>
                             </div>
-                            {index === selectedIndex && <ArrowRight className="w-4 h-4 text-teal-600" />}
+                            <div className="flex items-center gap-2">
+                                {locked && <Lock className="w-3.5 h-3.5 text-slate-400" />}
+                                {index === selectedIndex && <ArrowRight className="w-4 h-4 text-teal-600" />}
+                            </div>
                         </button>
-                    ))
+                    )})
                 )}
             </div>
             

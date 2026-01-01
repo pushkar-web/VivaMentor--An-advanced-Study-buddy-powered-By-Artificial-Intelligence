@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadedFile, StudyLevel, StudyGuide, GlossaryTerm, DeepDiveResult } from '../types';
+import { UploadedFile, StudyLevel, StudyGuide, GlossaryTerm, DeepDiveResult, UserPlan } from '../types';
 import { generateStudyMaterial, explainSelectedText, generateDeepDive } from '../services/gemini';
-import { BookOpen, Zap, Layers, GraduationCap, Loader2, Download, GitGraph, Volume2, Square, StopCircle, PlayCircle, X, Sparkles, HelpCircle, Globe, ExternalLink } from 'lucide-react';
+import { BookOpen, Zap, Layers, GraduationCap, Loader2, Download, GitGraph, Volume2, Square, StopCircle, PlayCircle, X, Sparkles, HelpCircle, Globe, ExternalLink, Lock } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import mermaid from 'mermaid';
@@ -9,6 +10,8 @@ import ReactMarkdown from 'react-markdown';
 
 interface StudyGuideGeneratorProps {
   file: UploadedFile;
+  userPlan: UserPlan;
+  onUpgradeTrigger: () => void;
 }
 
 interface ContextMenuState {
@@ -18,7 +21,7 @@ interface ContextMenuState {
     visible: boolean;
 }
 
-const StudyGuideGenerator: React.FC<StudyGuideGeneratorProps> = ({ file }) => {
+const StudyGuideGenerator: React.FC<StudyGuideGeneratorProps> = ({ file, userPlan, onUpgradeTrigger }) => {
   const [loading, setLoading] = useState(false);
   const [guide, setGuide] = useState<StudyGuide | null>(null);
   const [currentLevel, setCurrentLevel] = useState<StudyLevel | null>(null);
@@ -113,6 +116,16 @@ const StudyGuideGenerator: React.FC<StudyGuideGeneratorProps> = ({ file }) => {
 
 
   const handleGenerate = async (level: StudyLevel) => {
+    // Check Permissions
+    if (level === StudyLevel.DETAILED && userPlan === UserPlan.FREE) {
+        onUpgradeTrigger();
+        return;
+    }
+    if (level === StudyLevel.ADVANCED && userPlan !== UserPlan.GENIUS) {
+        onUpgradeTrigger();
+        return;
+    }
+
     setLoading(true);
     setCurrentLevel(level);
     setGuide(null);
@@ -240,6 +253,12 @@ const StudyGuideGenerator: React.FC<StudyGuideGeneratorProps> = ({ file }) => {
     return doc.body.innerHTML;
   };
 
+  const getLockStatus = (levelId: StudyLevel) => {
+      if (levelId === StudyLevel.DETAILED && userPlan === UserPlan.FREE) return true;
+      if (levelId === StudyLevel.ADVANCED && userPlan !== UserPlan.GENIUS) return true;
+      return false;
+  };
+
   const levels = [
     { id: StudyLevel.QUICK, icon: Zap, label: "Quick Summary", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
     { id: StudyLevel.DETAILED, icon: Layers, label: "Detailed Guide", color: "bg-blue-100 text-blue-700 border-blue-200" },
@@ -268,9 +287,15 @@ const StudyGuideGenerator: React.FC<StudyGuideGeneratorProps> = ({ file }) => {
                   <HelpCircle className="w-3 h-3 text-purple-400" /> Quiz Me
               </button>
               <div className="w-px h-4 bg-slate-700"></div>
-              <button onClick={handleDeepDive} className="px-3 py-1.5 hover:bg-slate-700 rounded-md text-xs font-bold flex items-center gap-1 transition-colors text-teal-300">
-                  <Globe className="w-3 h-3" /> Deep Dive
-              </button>
+              {userPlan !== UserPlan.FREE ? (
+                  <button onClick={handleDeepDive} className="px-3 py-1.5 hover:bg-slate-700 rounded-md text-xs font-bold flex items-center gap-1 transition-colors text-teal-300">
+                      <Globe className="w-3 h-3" /> Deep Dive
+                  </button>
+              ) : (
+                  <button onClick={onUpgradeTrigger} className="px-3 py-1.5 hover:bg-slate-700 rounded-md text-xs font-bold flex items-center gap-1 transition-colors text-slate-400">
+                      <Lock className="w-3 h-3" /> Deep Dive
+                  </button>
+              )}
               
               {/* Arrow */}
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1 w-2 h-2 bg-slate-900 rotate-45"></div>
@@ -334,24 +359,37 @@ const StudyGuideGenerator: React.FC<StudyGuideGeneratorProps> = ({ file }) => {
             Generate Study Material
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {levels.map((lvl) => (
-              <button
-                key={lvl.id}
-                onClick={() => handleGenerate(lvl.id)}
-                disabled={loading}
-                className={`p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 hover:shadow-md ${
-                  currentLevel === lvl.id ? 'ring-2 ring-offset-2 ring-teal-500 border-transparent shadow-lg transform scale-[1.02]' : 'border-slate-100 hover:border-teal-200'
-                } ${loading ? 'opacity-50 cursor-not-allowed' : ''} bg-slate-50`}
-              >
-                <div className={`p-2 rounded-full ${lvl.color}`}>
-                  <lvl.icon className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-slate-700">{lvl.label}</span>
-              </button>
-            ))}
+            {levels.map((lvl) => {
+              const isLocked = getLockStatus(lvl.id);
+              return (
+                <button
+                    key={lvl.id}
+                    onClick={() => handleGenerate(lvl.id)}
+                    disabled={loading}
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 relative overflow-hidden group hover:shadow-md ${
+                    currentLevel === lvl.id 
+                        ? 'ring-2 ring-offset-2 ring-teal-500 border-transparent shadow-lg transform scale-[1.02]' 
+                        : isLocked 
+                            ? 'border-slate-100 opacity-80 bg-slate-50 hover:bg-slate-100 cursor-pointer' 
+                            : 'border-slate-100 hover:border-teal-200 bg-slate-50'
+                    } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    {isLocked && (
+                        <div className="absolute top-2 right-2 p-1 bg-slate-200 rounded-full z-10">
+                            <Lock className="w-3 h-3 text-slate-500" />
+                        </div>
+                    )}
+                    <div className={`p-2 rounded-full ${lvl.color}`}>
+                    <lvl.icon className="w-5 h-5" />
+                    </div>
+                    <span className="font-semibold text-slate-700">{lvl.label}</span>
+                </button>
+              );
+            })}
           </div>
       </div>
 
+      {/* Loading & Preview Sections (Rest of the component remains similar) */}
       {loading && (
         <div className="py-20 flex flex-col items-center justify-center text-slate-400 bg-white rounded-xl border border-slate-200 border-dashed">
           <Loader2 className="w-10 h-10 animate-spin text-teal-600 mb-4" />
@@ -360,8 +398,8 @@ const StudyGuideGenerator: React.FC<StudyGuideGeneratorProps> = ({ file }) => {
         </div>
       )}
 
-      {/* Preview & Actions */}
       {guide && !loading && (
+         /* Content rendering logic remains same as before */
         <div className="flex flex-col gap-6">
           <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm sticky top-4 z-20 gap-4">
              <div>

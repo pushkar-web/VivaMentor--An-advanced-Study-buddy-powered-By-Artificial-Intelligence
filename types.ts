@@ -1,3 +1,4 @@
+
 export interface UploadedFile {
   name: string;
   type: string;
@@ -8,6 +9,12 @@ export enum StudyLevel {
   QUICK = 'Quick Summary',
   DETAILED = 'Detailed Explanation',
   ADVANCED = 'Advanced Deep Dive',
+}
+
+export enum UserPlan {
+  FREE = 'Free',
+  SCHOLAR = 'Scholar',
+  GENIUS = 'Genius'
 }
 
 export interface Flashcard {
@@ -169,6 +176,7 @@ export enum AppView {
   PLANNER = 'PLANNER',
   ESSAY_GRADER = 'ESSAY_GRADER',
   DEBATE_ARENA = 'DEBATE_ARENA',
+  PRICING = 'PRICING',
 }
 
 // Helper types for Live API

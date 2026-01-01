@@ -1,12 +1,14 @@
+
 import React, { useCallback, useState } from 'react';
-import { UploadCloud, FileText, AlertCircle, Sparkles, BrainCircuit, Mic, FileType, CheckCircle2, ArrowRight, Zap, GraduationCap, BarChart3, Layers, Github, Twitter, Share2, Music, Calendar, Clock } from 'lucide-react';
+import { UploadCloud, FileText, AlertCircle, Sparkles, BrainCircuit, Mic, FileType, CheckCircle2, ArrowRight, Zap, GraduationCap, BarChart3, Layers, Github, Twitter, Share2, Music, Calendar, Clock, File } from 'lucide-react';
 import { UploadedFile } from '../types';
 
 interface FileUploadProps {
   onFileUpload: (file: UploadedFile) => void;
+  usage?: { current: number; limit: number };
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
+const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, usage }) => {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   
@@ -33,12 +35,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
   const processFile = (file: File | undefined) => {
     setError(null);
     if (file) {
-      // Basic validation
-      const supportedExtensions = ['.pdf', '.txt', '.md', '.json', '.html', '.js', '.ts', '.csv'];
+      // Extended validation for PDF, Docs, PPT, Text, Code
+      const supportedExtensions = [
+          '.pdf', '.txt', '.md', '.json', '.html', '.js', '.ts', '.csv', 
+          '.doc', '.docx', '.ppt', '.pptx'
+      ];
       const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
       
       if (!supportedExtensions.includes(ext) && !file.type.includes('image') && !file.type.includes('pdf')) {
-          setError(`Unsupported file type: ${ext}. Please upload a PDF or Text file.`);
+          setError(`Unsupported file type: ${ext}. Please upload a PDF, Word, PowerPoint, or Text file.`);
           return;
       }
 
@@ -48,7 +53,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
         // Extract base64 part
         const base64Data = result.split(',')[1];
         
-        // Improve mime type detection
+        // Improve mime type detection for common office formats
         let type = file.type;
         if (!type || type === '') {
              if (file.name.endsWith('.pdf')) type = 'application/pdf';
@@ -56,7 +61,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
              else if (file.name.endsWith('.md')) type = 'text/plain';
              else if (file.name.endsWith('.json')) type = 'application/json';
              else if (file.name.endsWith('.csv')) type = 'text/csv';
-             else type = 'text/plain'; // Fallback for code/text files
+             else if (file.name.endsWith('.docx')) type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+             else if (file.name.endsWith('.pptx')) type = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+             else type = 'text/plain'; // Fallback
         }
 
         onFileUpload({
@@ -116,7 +123,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
                </h1>
                
                <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed mb-8">
-                   Upload your study materials and let VivaMentor generate tailored study guides, interactive flashcards, and conduct voice-based oral exams.
+                   Upload your study materials (PDF, Docs, PPT) and let VivaMentor generate tailored study guides, interactive flashcards, and conduct voice-based oral exams.
                </p>
             </div>
 
@@ -149,15 +156,27 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
                             {isDragging ? "Drop it like it's hot!" : (error ? "File not supported" : "Upload Document")}
                         </h3>
                         
-                        <p className={`text-sm mb-8 max-w-sm ${error ? 'text-red-500' : 'text-slate-400'}`}>
-                            {error ? error : "Drag & drop your PDF, DOCX, or TXT file here, or click to browse."}
+                        <p className={`text-sm mb-4 max-w-sm ${error ? 'text-red-500' : 'text-slate-400'}`}>
+                            {error ? error : "Drag & drop your PDF, Word, PowerPoint, or Text file here."}
                         </p>
+                        
+                        {/* Usage Limit Display */}
+                        {usage && (
+                            <div className="mb-6 bg-slate-100 px-4 py-1.5 rounded-full text-xs font-bold text-slate-500 border border-slate-200">
+                                {usage.limit === Infinity ? (
+                                    <span>Unlimited Uploads (Genius Plan)</span>
+                                ) : (
+                                    <span>Used {usage.current} / {usage.limit} Uploads</span>
+                                )}
+                            </div>
+                        )}
 
                         {!error && (
                             <div className="flex flex-wrap justify-center gap-3">
                                 {[
                                     { ext: 'PDF', icon: FileType, color: 'bg-red-50 text-red-600 border-red-100' },
                                     { ext: 'DOCX', icon: FileText, color: 'bg-blue-50 text-blue-600 border-blue-100' },
+                                    { ext: 'PPTX', icon: File, color: 'bg-orange-50 text-orange-600 border-orange-100' },
                                     { ext: 'TXT', icon: FileText, color: 'bg-slate-100 text-slate-600 border-slate-200' }
                                 ].map((type) => (
                                     <span key={type.ext} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold ${type.color}`}>
@@ -167,7 +186,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
                             </div>
                         )}
                     </div>
-                    <input type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.txt,.md,.json,.html,.csv,.js,.ts" />
+                    <input type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.txt,.md,.json,.html,.csv,.js,.ts,.doc,.docx,.ppt,.pptx" />
                 </label>
             </div>
         </div>

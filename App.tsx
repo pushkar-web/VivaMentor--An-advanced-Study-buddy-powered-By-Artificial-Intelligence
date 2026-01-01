@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { AppView, UploadedFile } from './types';
+import { AppView, UploadedFile, UserPlan } from './types';
 import FileUpload from './components/FileUpload';
 import StudyGuideGenerator from './components/StudyGuideGenerator';
 import FlashcardDeck from './components/FlashcardDeck';
@@ -13,8 +14,9 @@ import PomodoroTimer from './components/PomodoroTimer';
 import CommandPalette from './components/CommandPalette';
 import EssayGrader from './components/EssayGrader';
 import DebateArena from './components/DebateArena';
+import PricingPage from './components/PricingPage';
 import { generateKeyInsights } from './services/gemini';
-import { Book, LayoutDashboard, FileText, BrainCircuit, Mic, ChevronRight, Menu, HelpCircle, MessageSquareText, Headphones, Share2, Lightbulb, Sparkles, Calendar, Trophy, Zap, Flame, Command, PenTool, Swords } from 'lucide-react';
+import { Book, LayoutDashboard, FileText, BrainCircuit, Mic, ChevronRight, Menu, HelpCircle, MessageSquareText, Headphones, Share2, Lightbulb, Sparkles, Calendar, Trophy, Zap, Flame, Command, PenTool, Swords, Lock, Crown, AlertTriangle } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentFile, setCurrentFile] = useState<UploadedFile | null>(null);
@@ -35,6 +37,75 @@ const App: React.FC = () => {
   });
   const [streak, setStreak] = useState(0);
   const [showLevelUp, setShowLevelUp] = useState(false);
+
+  // Upload Count State
+  const [uploadCount, setUploadCount] = useState(() => {
+    const saved = localStorage.getItem('vivamentor_upload_count');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  // User Plan State
+  const [userPlan, setUserPlan] = useState<UserPlan>(() => {
+      const saved = localStorage.getItem('vivamentor_plan');
+      return (saved as UserPlan) || UserPlan.FREE;
+  });
+
+  // Plan Limits Definition
+  const getUploadLimit = () => {
+      switch(userPlan) {
+          case UserPlan.FREE: return 3;
+          case UserPlan.SCHOLAR: return 15;
+          case UserPlan.GENIUS: return Infinity;
+          default: return 3;
+      }
+  };
+
+  const handleUpgrade = (plan: UserPlan) => {
+      setUserPlan(plan);
+      localStorage.setItem('vivamentor_plan', plan);
+      setView(AppView.DASHBOARD);
+      addXp(200); // Bonus XP for upgrading
+  };
+
+  // Fixed Feature Gating Logic
+  const isFeatureLocked = (featureId: AppView) => {
+      if (userPlan === UserPlan.GENIUS) return false;
+      
+      // Features available to Scholar (Locked for Free)
+      // These are features that a Scholar CAN access, but a Free user CANNOT.
+      const scholarExclusiveFeatures = [
+          AppView.VIVA_EXAM, 
+          AppView.DEBATE_ARENA, 
+          AppView.ESSAY_GRADER, 
+          AppView.KNOWLEDGE_GRAPH,
+      ];
+
+      // Features ONLY for Genius (Locked for Scholar AND Free)
+      const geniusExclusiveFeatures = [
+          AppView.PODCAST
+      ];
+
+      if (userPlan === UserPlan.FREE) {
+          // Free users are locked out of both Scholar and Genius exclusive features
+          return scholarExclusiveFeatures.includes(featureId) || geniusExclusiveFeatures.includes(featureId);
+      }
+
+      if (userPlan === UserPlan.SCHOLAR) {
+          // Scholar users are ONLY locked out of Genius features
+          return geniusExclusiveFeatures.includes(featureId);
+      }
+
+      return false;
+  };
+
+  const handleNavigate = (targetView: AppView) => {
+      if (isFeatureLocked(targetView)) {
+          setView(AppView.PRICING);
+      } else {
+          setView(targetView);
+      }
+      setMobileMenuOpen(false);
+  };
 
   // Initialize Streak Logic
   useEffect(() => {
@@ -91,6 +162,20 @@ const App: React.FC = () => {
   };
 
   const handleFileUpload = async (file: UploadedFile) => {
+    // Check Limits
+    const limit = getUploadLimit();
+    if (uploadCount >= limit) {
+        // Strict check: if count equals or exceeds limit, block upload
+        alert(`You have reached your file upload limit (${limit}) for the ${userPlan} plan. Please upgrade to upload more.`);
+        setView(AppView.PRICING);
+        return;
+    }
+
+    // Increment Upload Count
+    const newCount = uploadCount + 1;
+    setUploadCount(newCount);
+    localStorage.setItem('vivamentor_upload_count', newCount.toString());
+
     setCurrentFile(file);
     setView(AppView.DASHBOARD);
     addXp(50); // XP for uploading
@@ -131,14 +216,23 @@ const App: React.FC = () => {
   ];
 
   const renderContent = () => {
+    if (view === AppView.PRICING) {
+        return <PricingPage currentPlan={userPlan} onUpgrade={handleUpgrade} onCancel={() => setView(currentFile ? AppView.DASHBOARD : AppView.UPLOAD)} />;
+    }
+
     if (!currentFile && view !== AppView.UPLOAD) {
       setView(AppView.UPLOAD);
       return null;
     }
 
+    // Ensure locked features cannot be rendered even if view state is somehow set
+    if (view !== AppView.UPLOAD && view !== AppView.DASHBOARD && isFeatureLocked(view)) {
+        return <PricingPage currentPlan={userPlan} onUpgrade={handleUpgrade} onCancel={() => setView(AppView.DASHBOARD)} />;
+    }
+
     switch (view) {
       case AppView.UPLOAD:
-        return <FileUpload onFileUpload={handleFileUpload} />;
+        return <FileUpload onFileUpload={handleFileUpload} usage={{ current: uploadCount, limit: getUploadLimit() }} />;
       case AppView.DASHBOARD:
         return (
           <div className="max-w-5xl mx-auto">
@@ -201,7 +295,7 @@ const App: React.FC = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-               <div onClick={() => setView(AppView.PLANNER)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all">
+               <div onClick={() => handleNavigate(AppView.PLANNER)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all">
                   <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center text-teal-600 mb-4 group-hover:scale-110 transition-transform">
                     <Calendar className="w-6 h-6" />
                   </div>
@@ -212,40 +306,49 @@ const App: React.FC = () => {
                   </div>
                </div>
 
-               <div onClick={() => setView(AppView.ESSAY_GRADER)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-pink-400 hover:shadow-md transition-all">
+               <div onClick={() => handleNavigate(AppView.ESSAY_GRADER)} className={`group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-pink-400 hover:shadow-md transition-all relative overflow-hidden ${isFeatureLocked(AppView.ESSAY_GRADER) ? 'opacity-80' : ''}`}>
+                  {isFeatureLocked(AppView.ESSAY_GRADER) && (
+                      <div className="absolute top-2 right-2 bg-slate-100 p-1.5 rounded-full z-10"><Lock className="w-4 h-4 text-slate-500" /></div>
+                  )}
                   <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center text-pink-600 mb-4 group-hover:scale-110 transition-transform">
                     <PenTool className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-2">Essay Grader</h3>
                   <p className="text-slate-500">Write essays on generated topics and get AI grading & feedback.</p>
                   <div className="mt-4 flex items-center text-pink-600 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    Start Writing <ChevronRight className="w-4 h-4 ml-1" />
+                    {isFeatureLocked(AppView.ESSAY_GRADER) ? 'Upgrade to Unlock' : 'Start Writing'} <ChevronRight className="w-4 h-4 ml-1" />
                   </div>
                </div>
 
-               <div onClick={() => setView(AppView.DEBATE_ARENA)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-red-400 hover:shadow-md transition-all">
+               <div onClick={() => handleNavigate(AppView.DEBATE_ARENA)} className={`group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-red-400 hover:shadow-md transition-all relative overflow-hidden ${isFeatureLocked(AppView.DEBATE_ARENA) ? 'opacity-80' : ''}`}>
+                  {isFeatureLocked(AppView.DEBATE_ARENA) && (
+                      <div className="absolute top-2 right-2 bg-slate-100 p-1.5 rounded-full z-10"><Lock className="w-4 h-4 text-slate-500" /></div>
+                  )}
                   <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center text-red-600 mb-4 group-hover:scale-110 transition-transform">
                     <Swords className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-2">Debate Arena</h3>
                   <p className="text-slate-500">Challenge the AI in a structured debate to test your critical thinking.</p>
                   <div className="mt-4 flex items-center text-red-600 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    Enter Arena <ChevronRight className="w-4 h-4 ml-1" />
+                    {isFeatureLocked(AppView.DEBATE_ARENA) ? 'Upgrade to Unlock' : 'Enter Arena'} <ChevronRight className="w-4 h-4 ml-1" />
                   </div>
                </div>
 
-               <div onClick={() => setView(AppView.KNOWLEDGE_GRAPH)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all">
+               <div onClick={() => handleNavigate(AppView.KNOWLEDGE_GRAPH)} className={`group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all relative overflow-hidden ${isFeatureLocked(AppView.KNOWLEDGE_GRAPH) ? 'opacity-80' : ''}`}>
+                  {isFeatureLocked(AppView.KNOWLEDGE_GRAPH) && (
+                      <div className="absolute top-2 right-2 bg-slate-100 p-1.5 rounded-full z-10"><Lock className="w-4 h-4 text-slate-500" /></div>
+                  )}
                   <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 mb-4 group-hover:scale-110 transition-transform">
                     <Share2 className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-2">Knowledge Graph</h3>
                   <p className="text-slate-500">Visualize concepts and relationships in an interactive mind map.</p>
                   <div className="mt-4 flex items-center text-indigo-600 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    Explore Graph <ChevronRight className="w-4 h-4 ml-1" />
+                    {isFeatureLocked(AppView.KNOWLEDGE_GRAPH) ? 'Upgrade to Unlock' : 'Explore Graph'} <ChevronRight className="w-4 h-4 ml-1" />
                   </div>
                </div>
 
-               <div onClick={() => setView(AppView.STUDY_MATERIAL)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all">
+               <div onClick={() => handleNavigate(AppView.STUDY_MATERIAL)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all">
                   <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
                     <FileText className="w-6 h-6" />
                   </div>
@@ -256,7 +359,7 @@ const App: React.FC = () => {
                   </div>
                </div>
 
-               <div onClick={() => setView(AppView.FLASHCARDS)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-orange-400 hover:shadow-md transition-all">
+               <div onClick={() => handleNavigate(AppView.FLASHCARDS)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-orange-400 hover:shadow-md transition-all">
                   <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 mb-4 group-hover:scale-110 transition-transform">
                     <BrainCircuit className="w-6 h-6" />
                   </div>
@@ -267,7 +370,7 @@ const App: React.FC = () => {
                   </div>
                </div>
                
-               <div onClick={() => setView(AppView.QUIZ)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-400 hover:shadow-md transition-all">
+               <div onClick={() => handleNavigate(AppView.QUIZ)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-400 hover:shadow-md transition-all">
                   <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600 mb-4 group-hover:scale-110 transition-transform">
                     <HelpCircle className="w-6 h-6" />
                   </div>
@@ -278,7 +381,7 @@ const App: React.FC = () => {
                   </div>
                </div>
 
-               <div onClick={() => setView(AppView.CHAT)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all">
+               <div onClick={() => handleNavigate(AppView.CHAT)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all">
                   <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center text-teal-600 mb-4 group-hover:scale-110 transition-transform">
                     <MessageSquareText className="w-6 h-6" />
                   </div>
@@ -289,18 +392,24 @@ const App: React.FC = () => {
                   </div>
                </div>
 
-               <div onClick={() => setView(AppView.PODCAST)} className="group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-rose-400 hover:shadow-md transition-all">
+               <div onClick={() => handleNavigate(AppView.PODCAST)} className={`group cursor-pointer bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-rose-400 hover:shadow-md transition-all relative overflow-hidden ${isFeatureLocked(AppView.PODCAST) ? 'opacity-80' : ''}`}>
+                  {isFeatureLocked(AppView.PODCAST) && (
+                      <div className="absolute top-2 right-2 bg-slate-100 p-1.5 rounded-full z-10"><Lock className="w-4 h-4 text-slate-500" /></div>
+                  )}
                   <div className="w-12 h-12 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600 mb-4 group-hover:scale-110 transition-transform">
                     <Headphones className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-2">Audio Notebook</h3>
                   <p className="text-slate-500">Listen to an AI-generated podcast discussion about your material.</p>
                   <div className="mt-4 flex items-center text-rose-600 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    Generate Audio <ChevronRight className="w-4 h-4 ml-1" />
+                    {isFeatureLocked(AppView.PODCAST) ? 'Upgrade to Unlock' : 'Generate Audio'} <ChevronRight className="w-4 h-4 ml-1" />
                   </div>
                </div>
 
-               <div onClick={() => setView(AppView.VIVA_EXAM)} className="group cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-md border border-slate-700 hover:shadow-xl transition-all text-white relative overflow-hidden lg:col-span-2">
+               <div onClick={() => handleNavigate(AppView.VIVA_EXAM)} className={`group cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-md border border-slate-700 hover:shadow-xl transition-all text-white relative overflow-hidden lg:col-span-2 ${isFeatureLocked(AppView.VIVA_EXAM) ? 'opacity-90' : ''}`}>
+                  {isFeatureLocked(AppView.VIVA_EXAM) && (
+                      <div className="absolute top-4 right-4 bg-white/10 backdrop-blur p-2 rounded-full z-20"><Lock className="w-5 h-5 text-white" /></div>
+                  )}
                   <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500 opacity-10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
                   <div className="relative z-10 flex flex-col h-full justify-between">
                     <div className="flex items-center gap-4">
@@ -327,7 +436,7 @@ const App: React.FC = () => {
       case AppView.KNOWLEDGE_GRAPH:
         return currentFile ? <KnowledgeGraph file={currentFile} /> : null;
       case AppView.STUDY_MATERIAL:
-        return currentFile ? <StudyGuideGenerator file={currentFile} /> : null;
+        return currentFile ? <StudyGuideGenerator file={currentFile} userPlan={userPlan} onUpgradeTrigger={() => setView(AppView.PRICING)} /> : null;
       case AppView.ESSAY_GRADER:
         return currentFile ? <EssayGrader file={currentFile} onComplete={addXp} /> : null;
       case AppView.DEBATE_ARENA:
@@ -354,8 +463,9 @@ const App: React.FC = () => {
       <CommandPalette 
         isOpen={commandPaletteOpen} 
         onClose={() => setCommandPaletteOpen(false)}
-        onNavigate={(v) => { setView(v); }}
+        onNavigate={handleNavigate}
         currentFile={!!currentFile}
+        userPlan={userPlan}
       />
 
       {/* Level Up Notification */}
@@ -373,7 +483,7 @@ const App: React.FC = () => {
       )}
 
       {/* Sidebar for Desktop */}
-      {view !== AppView.UPLOAD && (
+      {view !== AppView.UPLOAD && view !== AppView.PRICING && (
         <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 h-screen sticky top-0">
           <div className="p-6 border-b border-slate-100">
             <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -405,23 +515,36 @@ const App: React.FC = () => {
           </div>
 
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-            {navItems.map((item) => (
+            {navItems.map((item) => {
+              const locked = isFeatureLocked(item.id);
+              return (
               <button
                 key={item.id}
-                onClick={() => setView(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                onClick={() => handleNavigate(item.id)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors ${
                   view === item.id 
                     ? 'bg-teal-50 text-teal-700' 
                     : 'text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${view === item.id ? 'text-teal-600' : 'text-slate-400'}`} />
-                {item.label}
+                <div className="flex items-center gap-3">
+                    <item.icon className={`w-5 h-5 ${view === item.id ? 'text-teal-600' : 'text-slate-400'}`} />
+                    {item.label}
+                </div>
+                {locked && <Lock className="w-3.5 h-3.5 text-slate-400" />}
               </button>
-            ))}
+            )})}
           </nav>
           
           <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+             {userPlan === UserPlan.FREE && (
+                 <button 
+                    onClick={() => setView(AppView.PRICING)}
+                    className="w-full mb-4 bg-gradient-to-r from-teal-50 to-emerald-500 text-white py-2 rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                 >
+                     <Crown className="w-4 h-4" /> Upgrade Plan
+                 </button>
+             )}
              <div className="flex items-center gap-2 text-xs text-slate-400 justify-center mb-3">
                  <Command className="w-3 h-3" /> <span className="font-mono">Cmd+K</span> for actions
              </div>
@@ -442,7 +565,7 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen">
         {/* Mobile Header */}
-        {view !== AppView.UPLOAD && (
+        {view !== AppView.UPLOAD && view !== AppView.PRICING && (
           <header className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-50">
             <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
               <Book className="w-5 h-5 text-teal-600" />
@@ -463,18 +586,31 @@ const App: React.FC = () => {
                 <div className="mb-4">
                      <PomodoroTimer onComplete={() => addXp(25)} />
                 </div>
-                {navItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => { setView(item.id); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
-                      view === item.id ? 'bg-teal-50 text-teal-700' : 'text-slate-600'
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    {item.label}
-                  </button>
-                ))}
+                {navItems.map((item) => {
+                    const locked = isFeatureLocked(item.id);
+                    return (
+                    <button
+                        key={item.id}
+                        onClick={() => handleNavigate(item.id)}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium ${
+                        view === item.id ? 'bg-teal-50 text-teal-700' : 'text-slate-600'
+                        }`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <item.icon className="w-5 h-5" />
+                            {item.label}
+                        </div>
+                        {locked && <Lock className="w-4 h-4 text-slate-400" />}
+                    </button>
+                )})}
+                {userPlan === UserPlan.FREE && (
+                    <button 
+                        onClick={() => { setView(AppView.PRICING); setMobileMenuOpen(false); }}
+                        className="w-full text-left px-4 py-3 bg-gradient-to-r from-teal-50 to-emerald-50 text-teal-700 font-bold border border-teal-100 rounded-xl mt-2 flex items-center gap-2"
+                    >
+                        <Crown className="w-4 h-4" /> Upgrade to Pro
+                    </button>
+                )}
                 <button 
                     onClick={() => { setCurrentFile(null); setView(AppView.UPLOAD); setMobileMenuOpen(false); }}
                     className="w-full text-left px-4 py-3 text-red-500 font-medium border-t border-slate-100 mt-2"
@@ -484,7 +620,7 @@ const App: React.FC = () => {
              </div>
         )}
 
-        <div className={`w-full flex-1 ${view === AppView.UPLOAD ? 'p-0' : 'p-4 md:p-8 max-w-7xl mx-auto'}`}>
+        <div className={`w-full flex-1 ${view === AppView.UPLOAD || view === AppView.PRICING ? 'p-0' : 'p-4 md:p-8 max-w-7xl mx-auto'}`}>
             {renderContent()}
         </div>
       </main>
